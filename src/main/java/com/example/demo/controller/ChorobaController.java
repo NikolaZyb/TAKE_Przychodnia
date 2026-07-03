@@ -1,7 +1,7 @@
-package controller;
+package com.example.demo.controller;
 
 import com.example.demo.Choroba;
-import repository.ChorobaRepository;
+import com.example.demo.repository.ChorobaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +21,7 @@ public class ChorobaController {
 	
 	// 1.15 Aktualizacja danych choroby: Wysłanie żądania PUT lub PATCH na /choroby/{id} 
 	@PutMapping("/{id}")
-	public ResponseEntity<Choroba> updateChoroba(@PathVariable Long id, @RequestBody Choroba updatedChoroba) {
+	public ResponseEntity<Choroba> updateChoroba(@PathVariable("id") Long id, @RequestBody Choroba updatedChoroba) {
         return chorobaRepository.findById(id)
                 .map(choroba -> {
                     choroba.setNazwa(updatedChoroba.getNazwa());
@@ -31,5 +31,8 @@ public class ChorobaController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
+	
+	
 }
 	
