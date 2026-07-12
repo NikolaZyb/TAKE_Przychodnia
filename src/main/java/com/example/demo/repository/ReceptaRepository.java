@@ -1,5 +1,11 @@
-package repository;
+package com.example.demo.repository;
 
-public interface ReceptaRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.example.demo.Recepta;
+
+@Repository
+public interface ReceptaRepository extends JpaRepository <Recepta, Long>{
 
 }

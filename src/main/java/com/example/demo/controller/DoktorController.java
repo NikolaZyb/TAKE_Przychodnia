@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-
 import com.example.demo.Doktor;
 import com.example.demo.repository.DoktorRepository;
 
@@ -22,10 +21,14 @@ public class DoktorController {
         this.doktorRepository = doktorRepository;
     }
     
-    //Scenariusz 1.2. Pobranie listy wszystkich lekarzy
+    //Scenariusz 1.2. Pobranie listy wszystkich lekarzy (brak parametru)
+    //Scenariusz 3.2. Pobieranie listy lekarzy po specjalizacji (parametr obecny)
     //Oczekiwany wynik: 200 OK i zwrócenie listy obiektów typu Doktor.
     @GetMapping
-    public ResponseEntity<List<Doktor>> getAllLekarz() {
+    public ResponseEntity<List<Doktor>> getAllDoktorzy(@RequestParam(name = "specjalizacja",required = false) String specjalizacja) {
+        if (specjalizacja != null && !specjalizacja.isEmpty()) {
+            return ResponseEntity.ok(doktorRepository.findBySpecjalizacja(specjalizacja));
+        }
         return ResponseEntity.ok(doktorRepository.findAll());
     }
 
@@ -40,8 +43,10 @@ public class DoktorController {
 
     //Scenariusz 1.10. Pobranie szczegółów konkretnego lekarza
     //Oczekiwany status: 200 OK i zwrócenie danych lekarza.
+    // Scenariusz 5.1. Próba pobrania nieistniejącego lekarza
+    //Oczekiwany status: zwraca 404 Not Found
     @GetMapping("/{id}")
-    public ResponseEntity<Doktor> getLekarzById(@PathVariable("id") Long id) {
+    public ResponseEntity<Doktor> getDoktorById(@PathVariable("id") Long id) {
         return doktorRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -63,7 +68,7 @@ public class DoktorController {
     //Scenariusz 1.12. Usunięcie lekarza z bazy
     //Oczekiwany status: 204 No Content.
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delateLekarz(@PathVariable("id") Long id) {
+    public ResponseEntity<Void> deleteLekarz(@PathVariable("id") Long id) {
         if (doktorRepository.existsById(id)) {
             doktorRepository.deleteById(id);
             return ResponseEntity.noContent().build();

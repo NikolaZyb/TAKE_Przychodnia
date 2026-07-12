@@ -1,33 +1,57 @@
-package controller;
+package com.example.demo.controller;
 
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.Pacjent;
 import com.example.demo.repository.PacjentRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
 @RestController
 @RequestMapping("/pacjenci")
 public class PacjentController {
-	
-	@Autowired
-    private PacjentRepository pacjentRepository;
+
+    private final PacjentRepository pacjentRepository;
 
     public PacjentController(PacjentRepository pacjentRepository) {
         this.pacjentRepository = pacjentRepository;
     }
 
-    // Scenariusz 1.1. Dodanie nowego pacjenta
-    //Oczekiwany wynik: 201 Created.
+
+     // 1.1. Dodanie nowego pacjenta (Oczekiwany wynik: 201 Created)
+     // 5.2. Konflikt unikalności PESEL (Oczekiwany wynik: 409 Conflict)
     @PostMapping
-    public ResponseEntity<Pacjent> dodajPacjenta(@RequestBody Pacjent pacjent) {
-        Pacjent zapisanyPacjent = pacjentRepository.save(pacjent);
-        return ResponseEntity.status(HttpStatus.CREATED).body(zapisanyPacjent);
+    public ResponseEntity<?> createPacjent(@RequestBody Pacjent pacjent) {
+        if (pacjent.getPesel() != null && pacjentRepository.existsByPesel(pacjent.getPesel())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Pacjent z podanym numerem PESEL już istnieje.");
+        }
+        Pacjent saved = pacjentRepository.save(pacjent);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+     // 1.6. Pobranie listy wszystkich pacjentów
+     // 3.1. Wyszukiwanie pacjenta po numerze PESEL (opcjonalny parametr)
+    @GetMapping
+    public ResponseEntity<List<Pacjent>> getAllPacjenci(@RequestParam(name = "pesel", required = false) String pesel) {
+        if (pesel != null && !pesel.isEmpty()) {
+            return pacjentRepository.findByPesel(pesel)
+                    .map(pacjent -> ResponseEntity.ok(List.of(pacjent)))
+                    .orElse(ResponseEntity.ok(List.of()));
+        }
+        return ResponseEntity.ok(pacjentRepository.findAll());
     }
 
     //Scenariusz 1.4. Aktualizacja danych pacjenta
@@ -45,23 +69,6 @@ public class PacjentController {
         }).orElse(ResponseEntity.notFound().build());
     }
     
-    //Scenariusz 1.6. Pobranie listy wszystkich pacjentów
-    //Oczekiwany status: 200 OK i zwrócenie listy obiektów typu Pacjent.
-    @GetMapping
-    public ResponseEntity<List<Pacjent>> getAllPacjent() {
-        return ResponseEntity.ok(pacjentRepository.findAll());
-    }
-    
-    //Scenariusz 1.7. Pobranie szczegółów konkretnego pacjenta
-    //Oczekiwany status: 200 OK i zwrócenie danych pacjenta.
-    @GetMapping("/{id}")
-    public ResponseEntity<Pacjent> getPacjentById(@PathVariable("id") Long id) {
-        return pacjentRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-
     //Scenariusz 1.8. Usunięcie pacjenta z bazy
     //Oczekiwany status: 204 No Content.
     @DeleteMapping("/{id}")
@@ -71,5 +78,22 @@ public class PacjentController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
+    }
+    
+     // 1.7. Pobranie szczegółów konkretnego pacjenta
+     // 4.1. Pobranie wizyt pacjenta z użyciem HATEOAS
+    @GetMapping("/{id}")
+    public ResponseEntity<EntityModel<Pacjent>> getPacjentById(@PathVariable("id") Long id) {
+        return pacjentRepository.findById(id)
+                .map(pacjent -> {
+                    EntityModel<Pacjent> model = EntityModel.of(pacjent);
+                    model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(PacjentController.class).getPacjentById(id)).withSelfRel());
+                    
+                    // Dodanie linku do wizyt w sekcji _links
+                    model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(WizytaController.class).getAllWizyta()).withRel("wizyty"));
+                    
+                    return ResponseEntity.ok(model);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }
